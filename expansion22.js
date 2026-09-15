@@ -1,0 +1,62 @@
+(()=>{
+const U='https://ayfdkemjykhxqirlzbzw.supabase.co',K='sb_publishable_jYLFHHgTCQkufeykOAFmmQ_cyroudoy';
+const client=window.supabase?.createClient?window.supabase.createClient(U,K):null;
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=(s='')=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+let adminPassword='',rows=[],filter='pending',search='';
+const css=document.createElement('style');css.textContent=`
+.admin-lock{max-width:560px;margin:0 auto}.admin-lock-card{border:1px solid rgba(255,213,74,.28);border-radius:18px;padding:22px;background:linear-gradient(145deg,#0b2232,#071824)}.admin-lock-icon{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;font-size:28px;background:rgba(255,213,74,.08);border:1px solid rgba(255,213,74,.2);margin-bottom:12px}.admin-field{display:grid;gap:6px;margin-top:12px}.admin-field label{font-size:10px;color:var(--muted);font-weight:700}.admin-field input,.admin-field select{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#061827;color:#fff}.admin-login-row{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}.admin-console-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}.admin-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}.admin-summary div{padding:11px;border:1px solid var(--line);border-radius:11px;background:#061827}.admin-summary b{display:block;font-size:20px;color:var(--gold)}.admin-summary small{font-size:8px;color:var(--muted)}.admin-toolbar{display:grid;grid-template-columns:180px 1fr auto;gap:8px;margin:10px 0}.admin-toolbar select,.admin-toolbar input{padding:10px;border:1px solid var(--line);border-radius:10px;background:#061827;color:#fff}.admin-sub-list{display:grid;gap:10px}.admin-sub{border:1px solid var(--line);border-radius:14px;padding:14px;background:#071b2a}.admin-sub.pending{border-color:rgba(255,213,74,.3)}.admin-sub.approved{border-color:rgba(139,237,119,.32)}.admin-sub.rejected{border-color:rgba(255,110,110,.28)}.admin-sub-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.admin-sub h3{margin:5px 0}.admin-meta{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.admin-meta span{padding:4px 7px;border:1px solid var(--line);border-radius:999px;font-size:8px;color:#d7e3eb}.admin-desc{white-space:pre-wrap;color:#d6e3eb;font-size:11px;line-height:1.55}.admin-actions{display:grid;grid-template-columns:140px auto auto auto;gap:7px;align-items:center;margin-top:10px}.admin-actions select{padding:8px;border:1px solid var(--line);border-radius:9px;background:#061827;color:#fff}.admin-evidence{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.admin-empty{padding:16px;border:1px dashed var(--line);border-radius:12px;text-align:center;color:var(--muted)}.admin-password-box{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:13px;background:#061827}.admin-password-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}.admin-password-grid input{padding:10px;border:1px solid var(--line);border-radius:9px;background:#051521;color:#fff}.admin-security-note{padding:10px;border-left:3px solid var(--green);background:rgba(139,237,119,.05);border-radius:0 10px 10px 0;font-size:9px;color:var(--muted);margin-top:10px}.admin-tech-hidden{display:none!important}@media(max-width:760px){.admin-summary{grid-template-columns:1fr 1fr}.admin-toolbar,.admin-password-grid,.admin-actions{grid-template-columns:1fr}.admin-sub-top{flex-direction:column}}
+`;document.head.appendChild(css);
+function fmtDate(v){if(!v)return'—';try{return new Date(v).toLocaleString('pt-BR')}catch{return String(v)}}
+function statusLabel(s){return s==='approved'?'APROVADA':s==='rejected'?'REJEITADA':'PENDENTE'}
+function mount(){
+ const admin=$('#admin');if(!admin||$('#secureAdminRoot'))return;
+ const nav=$('[data-go="admin"]');if(nav)nav.textContent='Admin 🔒';
+ admin.innerHTML=`<div id="secureAdminRoot"><div class="panel"><div id="adminGate" class="admin-lock"><div class="admin-lock-card"><div class="admin-lock-icon">🔐</div><span class="eyebrow">ACESSO RESTRITO</span><h2>Administração de conquistas</h2><p class="muted">Entre com a senha administrativa para visualizar conquistas enviadas de qualquer navegador e revisar cada registro.</p><form id="adminLoginForm"><div class="admin-field"><label for="adminPassword">Senha administrativa</label><input id="adminPassword" type="password" required autocomplete="current-password" placeholder="Digite a senha"></div><div class="admin-login-row"><button class="btn" type="submit">Entrar no painel</button><span id="adminLoginMsg" class="message"></span></div></form><div class="admin-security-note">A senha não fica gravada no navegador. Ao atualizar a página, o painel volta a ficar bloqueado.</div></div></div><div id="adminConsole" hidden><div class="admin-console-head"><div><span class="eyebrow">MODERAÇÃO PROTEGIDA</span><h2>Conquistas enviadas</h2><p class="muted">Visualize envios pendentes, aprove, rejeite e defina o nível de confiança.</p></div><button class="btn ghost" id="adminLogout">Sair e bloquear</button></div><div class="admin-summary" id="adminSummary"></div><div class="admin-toolbar"><select id="adminFilter"><option value="pending">Pendentes</option><option value="approved">Aprovadas</option><option value="rejected">Rejeitadas</option><option value="">Todas</option></select><input id="adminSearch" placeholder="Buscar jogador, conquista ou descrição..."><button class="btn secondary" id="adminRefresh">Atualizar</button></div><p id="adminPanelMsg" class="message"></p><div class="admin-sub-list" id="adminSubmissionList"></div><div class="admin-password-box"><h3>Alterar senha administrativa</h3><p class="muted">Use pelo menos 10 caracteres. A alteração vale imediatamente.</p><div class="admin-password-grid"><div class="admin-field"><label>Nova senha</label><input id="adminNewPassword" type="password" autocomplete="new-password"></div><div class="admin-field"><label>Confirmar nova senha</label><input id="adminNewPassword2" type="password" autocomplete="new-password"></div><button class="btn secondary" id="adminChangePassword">Alterar senha</button></div><p id="adminPasswordMsg" class="message"></p></div></div></div><div class="admin-tech-hidden"><b id="trafficViews">0</b><b id="trafficVisitors">0</b><b id="trafficSessions">0</b><b id="supabaseStatus">ON</b><p id="trafficMsg"></p><div id="dbState"></div></div></div>`;
+ $('#adminLoginForm').addEventListener('submit',login);
+ $('#adminLogout').onclick=logout;
+ $('#adminFilter').onchange=e=>{filter=e.target.value;loadSubmissions()};
+ $('#adminSearch').oninput=e=>{search=e.target.value;render()};
+ $('#adminRefresh').onclick=loadSubmissions;
+ $('#adminChangePassword').onclick=changePassword;
+}
+async function login(ev){
+ ev.preventDefault();const msg=$('#adminLoginMsg'),input=$('#adminPassword');const pwd=input.value;
+ if(!client){msg.className='message error';msg.textContent='Serviço administrativo indisponível.';return}
+ msg.className='message';msg.textContent='Verificando...';
+ const {data,error}=await client.rpc('admin_verify_password',{p_password:pwd});
+ if(error||data!==true){adminPassword='';msg.className='message error';msg.textContent='Senha incorreta.';input.select();return}
+ adminPassword=pwd;input.value='';$('#adminGate').hidden=true;$('#adminConsole').hidden=false;msg.textContent='';await loadSubmissions();
+}
+function logout(){adminPassword='';rows=[];$('#adminConsole').hidden=true;$('#adminGate').hidden=false;$('#adminSubmissionList').innerHTML='';$('#adminLoginMsg').textContent='';$('#adminPassword').focus()}
+async function loadSubmissions(){
+ if(!adminPassword||!client)return;const msg=$('#adminPanelMsg');msg.className='message';msg.textContent='Carregando envios...';
+ const {data,error}=await client.rpc('admin_list_submissions',{p_password:adminPassword,p_status:filter||null});
+ if(error){msg.className='message error';msg.textContent=String(error.message||'Não foi possível carregar os envios.');if(/senha|password|28000/i.test(msg.textContent))logout();return}
+ rows=data||[];msg.className='message ok';msg.textContent=`${rows.length} registro(s) carregado(s).`;render();
+}
+function render(){
+ if(!$('#adminSubmissionList'))return;const n=search.trim().toLowerCase();const list=rows.filter(r=>!n||[r.player_name,r.character_name,r.title,r.description,r.server,r.era].join(' ').toLowerCase().includes(n));
+ const pending=rows.filter(r=>r.status==='pending').length,approved=rows.filter(r=>r.status==='approved').length,rejected=rows.filter(r=>r.status==='rejected').length;
+ $('#adminSummary').innerHTML=`<div><b>${rows.length}</b><small>NO FILTRO ATUAL</small></div><div><b>${pending}</b><small>PENDENTES</small></div><div><b>${approved}</b><small>APROVADAS</small></div><div><b>${rejected}</b><small>REJEITADAS</small></div>`;
+ $('#adminSubmissionList').innerHTML=list.length?list.map(r=>`<article class="admin-sub ${esc(r.status)}"><div class="admin-sub-top"><div><span class="tag ${r.status==='approved'?'green':r.status==='rejected'?'purple':'gold'}">${statusLabel(r.status)}</span><h3>${esc(r.title)}</h3><div class="admin-meta"><span>👤 ${esc(r.player_name||r.character_name||'—')}</span><span>🌐 ${esc(r.server||'—')}</span><span>🕒 ${esc(r.era||'—')}</span><span>🔎 Confiança ${esc(r.confidence||'D')}</span></div></div><small class="muted">Enviado em ${fmtDate(r.created_at)}</small></div><div class="admin-desc">${esc(r.description||'Sem descrição.')}</div><div class="admin-evidence">${r.evidence_url?`<a class="btn secondary" href="${esc(r.evidence_url)}" target="_blank" rel="noopener">Abrir prova ↗</a>`:''}${r.screenshot_url?`<a class="btn secondary" href="${esc(r.screenshot_url)}" target="_blank" rel="noopener">Abrir imagem ↗</a>`:''}</div><div class="admin-actions"><select data-confidence="${r.id}"><option value="A" ${r.confidence==='A'?'selected':''}>Confiança A</option><option value="B" ${r.confidence==='B'?'selected':''}>Confiança B</option><option value="C" ${r.confidence==='C'?'selected':''}>Confiança C</option><option value="D" ${(!r.confidence||r.confidence==='D')?'selected':''}>Confiança D</option></select><button class="btn" data-review="approved" data-id="${r.id}">Aprovar</button><button class="btn secondary" data-review="rejected" data-id="${r.id}">Rejeitar</button><button class="btn ghost" data-review="pending" data-id="${r.id}">Reabrir</button></div></article>`).join(''):'<div class="admin-empty">Nenhum envio encontrado neste filtro.</div>';
+ $$('[data-review]').forEach(b=>b.onclick=()=>review(b.dataset.id,b.dataset.review));
+}
+async function review(id,status){
+ if(!adminPassword||!client)return;const confidence=$(`[data-confidence="${CSS.escape(id)}"]`)?.value||'D';const msg=$('#adminPanelMsg');msg.className='message';msg.textContent='Salvando revisão...';
+ const {error}=await client.rpc('admin_review_submission',{p_password:adminPassword,p_id:id,p_status:status,p_confidence:confidence});
+ if(error){msg.className='message error';msg.textContent=String(error.message||'Não foi possível revisar.');return}
+ msg.className='message ok';msg.textContent=status==='approved'?'Conquista aprovada.':status==='rejected'?'Conquista rejeitada.':'Conquista reaberta como pendente.';
+ await loadSubmissions();try{if(typeof loadRankings==='function')loadRankings()}catch{}
+}
+async function changePassword(){
+ const a=$('#adminNewPassword'),b=$('#adminNewPassword2'),msg=$('#adminPasswordMsg');const next=a.value;
+ if(next.length<10){msg.className='message error';msg.textContent='Use pelo menos 10 caracteres.';return}
+ if(next!==b.value){msg.className='message error';msg.textContent='As duas senhas não coincidem.';return}
+ const {data,error}=await client.rpc('admin_change_password',{p_old_password:adminPassword,p_new_password:next});
+ if(error||data!==true){msg.className='message error';msg.textContent=String(error?.message||'Não foi possível alterar a senha.');return}
+ adminPassword=next;a.value='';b.value='';msg.className='message ok';msg.textContent='Senha alterada. Use a nova senha nos próximos acessos.';
+}
+function boot(){let tries=0;const t=setInterval(()=>{if($('#admin')){clearInterval(t);mount()}else if(++tries>40)clearInterval(t)},250)}
+document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot):boot();
+})();
