@@ -8,8 +8,11 @@ const css=document.createElement('style');css.textContent=`
   .nav.open{display:flex!important}
   .nav button{width:100%;min-height:44px;text-align:left;touch-action:manipulation;position:relative;z-index:102}
   .page.on{display:block!important;opacity:1!important;visibility:visible!important;transform:none!important}
-  .page.on .panel,.page.on .card,.page.on .pedia-card,.page.on .area-card,.page.on .progress-card{opacity:1!important;visibility:visible!important;transform:none!important}
+  .page.on .panel,.page.on .card,.page.on .pedia-card,.page.on .area-card,.page.on .progress-card{visibility:visible!important}
   #conquistas.page.on,#pedia.page.on{min-height:65vh!important}
+  /* MilMoPedia possui muitos painéis. No celular, só renderizamos de imediato o que está visível. */
+  #pedia>.panel{content-visibility:auto;contain-intrinsic-size:520px}
+  #pedia>#milmoPediaNavigator,#pedia>.panel:first-child{content-visibility:visible;contain-intrinsic-size:auto}
 }
 @media(max-width:760px){
   #conquistas .grid,#pedia .mp-grid,#pedia .area-grid{grid-template-columns:1fr!important}
@@ -18,20 +21,41 @@ const css=document.createElement('style');css.textContent=`
 }
 `;document.head.appendChild(css);
 
+let lastShown='';
+function revealCurrent(page){
+  $$('.mlh-reveal',page).forEach(el=>{
+    el.classList.add('mlh-in');
+    el.style.opacity='1';
+    el.style.transform='none';
+  });
+}
+
 function showPage(id){
   const page=$('#'+id);if(!page)return false;
-  // Prefer the application's own router when present.
-  try{if(typeof go==='function'){go(id)}}catch(e){}
+
+  // Evita reabrir a mesma página repetidamente e refazer todo o layout.
+  const alreadyActive=page.classList.contains('on')&&lastShown===id;
+  if(!alreadyActive){
+    try{
+      if(typeof go==='function') go(id);
+    }catch(e){
+      $$('.page').forEach(p=>p.classList.toggle('on',p.id===id));
+      $$('.nav button[data-go]').forEach(b=>b.classList.toggle('on',b.dataset.go===id));
+      try{history.replaceState(null,'','#'+id)}catch(_){}
+    }
+  }
+
+  // Garantia imediata de visibilidade, sem aguardar animações.
   if(!page.classList.contains('on')){
     $$('.page').forEach(p=>p.classList.toggle('on',p.id===id));
     $$('.nav button[data-go]').forEach(b=>b.classList.toggle('on',b.dataset.go===id));
-    try{history.replaceState(null,'','#'+id)}catch(e){}
   }
-  // Expansion 25 reveal animation could leave hidden pages transparent on mobile.
-  $$('.mlh-reveal',page).forEach(el=>{el.classList.add('mlh-in');el.style.opacity='1';el.style.transform='none'});
-  page.style.opacity='1';page.style.visibility='visible';
+  page.style.opacity='1';
+  page.style.visibility='visible';
+  revealCurrent(page);
   $('#nav')?.classList.remove('open');
-  setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);
+  lastShown=id;
+  requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'auto'}));
   return true;
 }
 
@@ -40,13 +64,13 @@ function bindNavigation(){
   if(menu&&!menu.dataset.mobileFix){
     menu.dataset.mobileFix='1';
     menu.setAttribute('aria-expanded',nav?.classList.contains('open')?'true':'false');
-    menu.addEventListener('click',()=>setTimeout(()=>menu.setAttribute('aria-expanded',nav?.classList.contains('open')?'true':'false'),0));
+    menu.addEventListener('click',()=>requestAnimationFrame(()=>menu.setAttribute('aria-expanded',nav?.classList.contains('open')?'true':'false')));
   }
+
   $$('[data-go]').forEach(btn=>{
     const id=btn.dataset.go;
     if(!id||btn.dataset.mobileRouteFix==='1')return;
     btn.dataset.mobileRouteFix='1';
-    // Capture phase makes touch navigation reliable even if an older handler throws later.
     btn.addEventListener('click',ev=>{
       if(innerWidth<=1100&&['conquistas','pedia'].includes(id)){
         ev.preventDefault();
@@ -57,17 +81,31 @@ function bindNavigation(){
   });
 }
 
-function repairCurrentPage(){
+function initialRepair(){
   const hash=(location.hash||'').replace('#','');
-  if(['conquistas','pedia'].includes(hash))showPage(hash);
-  const current=$('.page.on');
-  if(current)$$('.mlh-reveal',current).forEach(el=>el.classList.add('mlh-in'));
+  if(innerWidth<=1100&&['conquistas','pedia'].includes(hash)) showPage(hash);
+  else{
+    const current=$('.page.on');
+    if(current){lastShown=current.id;revealCurrent(current)}
+  }
 }
 
 function boot(){
-  bindNavigation();repairCurrentPage();
-  let n=0;const t=setInterval(()=>{bindNavigation();repairCurrentPage();if(++n>30)clearInterval(t)},300);
-  addEventListener('hashchange',repairCurrentPage);
+  bindNavigation();
+  initialRepair();
+
+  // Rebinding curto apenas para elementos que expansões tardias adicionarem.
+  // Não reabre MilMoPedia em loop: isso era a principal causa do atraso no celular.
+  let n=0;
+  const t=setInterval(()=>{
+    bindNavigation();
+    if(++n>=8)clearInterval(t);
+  },250);
+
+  addEventListener('hashchange',()=>{
+    const hash=(location.hash||'').replace('#','');
+    if(innerWidth<=1100&&['conquistas','pedia'].includes(hash)&&!$('#'+hash)?.classList.contains('on')) showPage(hash);
+  });
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
