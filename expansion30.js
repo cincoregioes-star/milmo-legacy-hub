@@ -24,10 +24,10 @@ async function fixHero(){
  card.style.cursor='pointer';
  if(card.dataset.mlh30Fixed==='1')return true;
  card.dataset.mlh30Fixed='1';
- const files=['p1.txt','p2.txt','p3.txt','p4.txt','p5.txt','p6.txt','p7.txt','p8.txt'];
+ const files=['p1.txt','p2.txt','p3.txt','p4.txt','p5a.txt','p5c.txt','p5b.txt','p6.txt','p7.txt','p8.txt'];
  try{
    const parts=await Promise.all(files.map(async name=>{
-     const r=await fetch('assets/rebirth-hero-parts/'+name+'?v=32',{cache:'no-store'});
+     const r=await fetch('assets/rebirth-hero-parts/'+name+'?v=33',{cache:'no-store'});
      if(!r.ok)throw new Error(name);
      return (await r.text()).trim();
    }));
@@ -35,9 +35,10 @@ async function fixHero(){
    const probe=new Image();
    await new Promise((resolve,reject)=>{probe.onload=resolve;probe.onerror=reject;probe.src=dataUri});
    img.src=dataUri;
+   img.style.opacity='1';
+   img.style.visibility='visible';
    return true;
  }catch(e){
-   // Se o arquivo reconstruído falhar, mantenha a imagem já existente visível.
    img.style.opacity='1';img.style.visibility='visible';
    return false;
  }
