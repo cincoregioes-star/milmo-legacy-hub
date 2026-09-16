@@ -15,8 +15,9 @@ css.textContent=`
   .top>#openSubmission,.top>#hubSearchTrigger{display:none!important}
   .page{display:none!important}
   .page.on{display:block!important;opacity:1!important;visibility:visible!important;transform:none!important;animation:none!important}
-  .page.on .mlh-reveal,.page.on .panel,.page.on .card,.page.on .pedia-card,.page.on .area-card,.page.on .progress-card{opacity:1!important;visibility:visible!important;transform:none!important;transition:none!important}
-  #pedia>.panel{content-visibility:visible!important;contain:none!important}
+  .page.on>.panel:first-child,.page.on>#milmoPediaNavigator{opacity:1!important;visibility:visible!important;transform:none!important}
+  #pedia>.panel:not(:first-child){content-visibility:auto!important;contain-intrinsic-size:520px!important}
+  #pedia>#milmoPediaNavigator{content-visibility:visible!important;contain:none!important}
 }
 @media(max-width:760px){
   .top{padding:10px 12px!important}.logo{font-size:25px!important}.wrap{width:94vw!important;padding-top:16px!important}
@@ -37,12 +38,17 @@ function syncTopHash(id){
   }catch(e){}
 }
 
+function revealInitial(page){
+  const first=page.querySelector('#milmoPediaNavigator,.panel');
+  if(first){first.classList.add('mlh-in');first.style.opacity='1';first.style.transform='none'}
+}
+
 function route(id){
   const page=$('#'+id);if(!page)return false;
   $$('.page').forEach(p=>p.classList.toggle('on',p===page));
   $$('#nav button[data-go]').forEach(b=>b.classList.toggle('on',b.dataset.go===id));
   page.style.opacity='1';page.style.visibility='visible';
-  $$('.mlh-reveal',page).forEach(el=>{el.classList.add('mlh-in');el.style.opacity='1';el.style.transform='none'});
+  revealInitial(page);
   $('#nav')?.classList.remove('open');
   const menu=$('#menuBtn');if(menu)menu.setAttribute('aria-expanded','false');
   syncTopHash(id);
@@ -59,7 +65,6 @@ function install(){
   document.documentElement.dataset.mobileNav27='1';
   menu.setAttribute('aria-label','Abrir menu');menu.setAttribute('aria-controls','nav');menu.setAttribute('aria-expanded','false');
 
-  // Captura no topo: elimina conflitos acumulados de versões anteriores sem alterar desktop.
   document.addEventListener('click',ev=>{
     if(innerWidth>1100)return;
     const mb=ev.target.closest('#menuBtn');
@@ -86,7 +91,6 @@ function install(){
     }
   });
 
-  // Corrige estado inicial no celular sem esperar consultas da MilMoPedia.
   if(innerWidth<=1100){
     const hash=(location.hash||'').slice(1);
     if(hash&&$('#'+hash))route(hash);
